@@ -53,150 +53,56 @@ Display the confusion matrix, classification report, and predictions.
 ### Name: Somalaraju Rohini
 ### Register Number: 212224240156
 
-```python
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import pandas as pd
-from sklearn.preprocessing import StandardScaler, LabelEncoder
-from sklearn.metrics import confusion_matrix, classification_report
-from torch.utils.data import TensorDataset, DataLoader
-
-# -----------------------------
-# Load Dataset
-# -----------------------------
-dataset = pd.read_csv("customers.csv")
-print("Dataset Preview:\n", dataset.head())
-
-# -----------------------------
-# Separate features & target
-# -----------------------------
-X = dataset.drop("Segmentation", axis=1)
-y = dataset["Segmentation"]
-
-# -----------------------------
-# Handle missing values
-# -----------------------------
-X["Work_Experience"].fillna(X["Work_Experience"].median(), inplace=True)
-X["Family_Size"].fillna(X["Family_Size"].median(), inplace=True)
-
-# -----------------------------
-# Encode categorical columns
-# -----------------------------
-cat_cols = X.select_dtypes(include="object").columns
-for col in cat_cols:
-    le = LabelEncoder()
-    X[col] = le.fit_transform(X[col])
-
-# -----------------------------
-# Encode target
-# -----------------------------
-label_encoder = LabelEncoder()
-y = label_encoder.fit_transform(y)
-
-# -----------------------------
-# Scale features
-# -----------------------------
-scaler = StandardScaler()
-X = scaler.fit_transform(X)
-
-# -----------------------------
-# Convert to tensors
-# -----------------------------
-X = torch.tensor(X, dtype=torch.float32)
-y = torch.tensor(y, dtype=torch.long)
-
-# -----------------------------
-# DataLoader (faster settings)
-# -----------------------------
-dataset = TensorDataset(X, y)
-loader = DataLoader(dataset, batch_size=64, shuffle=True)
-
-# -----------------------------
-# Neural Network Model
-# -----------------------------
+```
 class PeopleClassifier(nn.Module):
-    def __init__(self, input_size, classes):
-        super().__init__()
-        self.fc1 = nn.Linear(input_size, 16)
-        self.fc2 = nn.Linear(16, 8)
-        self.fc3 = nn.Linear(8, classes)
+    def __init__(self, input_size):
+        super(PeopleClassifier, self).__init__()
+        
+        self.fc1 = nn.Linear(input_size, 64)
+        self.fc2 = nn.Linear(64, 32)
+        self.fc3 = nn.Linear(32, 4)  # 4 output classes (A, B, C, D)
+        
+        self.dropout = nn.Dropout(0.3)
 
     def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = self.fc3(x)
-        return x
-
-model = PeopleClassifier(X.shape[1], len(label_encoder.classes_))
-
-# -----------------------------
-# Loss & Optimizer
-# -----------------------------
-criterion = nn.CrossEntropyLoss()
-optimizer = optim.Adam(model.parameters(), lr=0.01)
-
-# -----------------------------
-# Training (reduced epochs)
-# -----------------------------
-epochs = 20
-for epoch in range(epochs):
-    for xb, yb in loader:
-        optimizer.zero_grad()
-        outputs = model(xb)
-        loss = criterion(outputs, yb)
-        loss.backward()
-        optimizer.step()
-    print(f"Epoch {epoch + 1}/{epochs} completed")
-
-print("\nTraining Completed")
-
-# -----------------------------
-# Evaluation (same data)
-# -----------------------------
-model.eval()
-with torch.no_grad():
-    predictions = torch.argmax(model(X), dim=1)
-
-print("\nConfusion Matrix:")
-print(confusion_matrix(y, predictions))
-
-print("\nClassification Report:")
-print(classification_report(
-    y,
-    predictions,
-    target_names=label_encoder.classes_,
-    zero_division=0
-))
-
-# -----------------------------
-# Sample Prediction
-# -----------------------------
-sample = X[0].unsqueeze(0)
-with torch.no_grad():
-    pred = model(sample)
-    result = label_encoder.inverse_transform([torch.argmax(pred).item()])
-
-print("\nSample Prediction:", result[0])
+        x = F.relu(self.fc1(x))
+        x = self.dropout(x)
         
-
+        x = F.relu(self.fc2(x))
+        x = self.dropout(x)
+        
+        x = self.fc3(x)  # No softmax (handled by CrossEntropyLoss)
+        return x
 ```
-```python
-# Initialize the Model, Loss Function, and Optimizer
-
-
 ```
-```python
 def train_model(model, train_loader, criterion, optimizer, epochs):
-    #Include your code here
+    model.train()
+    
+    for epoch in range(epochs):
+        for X_batch, y_batch in train_loader:
+            
+            outputs = model(X_batch)
+            loss = criterion(outputs, y_batch)
+            
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+        
+        if (epoch + 1) % 10 == 0:
+            print(f'Epoch [{epoch+1}/{epochs}], Loss: {loss.item():.4f}')
 ```
+```
+input_size = X_train.shape[1]
 
-
+model = PeopleClassifier(input_size)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+```
 
 ## Dataset Information
-<img width="1023" height="315" alt="Screenshot 2026-02-06 210815" src="https://github.com/user-attachments/assets/9b9103b6-7f7a-480c-8791-89554100650a" />
 
 
+<img width="1358" height="694" alt="Screenshot 2026-03-17 183645" src="https://github.com/user-attachments/assets/09c46cf1-c0e7-4eb0-8d0a-4f1761c5b728" />
 
 
 
@@ -211,16 +117,18 @@ def train_model(model, train_loader, criterion, optimizer, epochs):
 
 
 
-<img width="555" height="630" alt="Screenshot 2026-02-06 210835" src="https://github.com/user-attachments/assets/da86efa1-bb24-48cc-af3b-5f15c3fa1660" />
+<img width="986" height="613" alt="Screenshot 2026-03-17 183734" src="https://github.com/user-attachments/assets/00fb5816-49b0-4d73-8dcb-5d9567ee5ba3" />
+
 
 
 
 ### Classification Report
 
 
+<img width="1063" height="592" alt="Screenshot 2026-03-17 183806" src="https://github.com/user-attachments/assets/d96133d1-005a-4cb3-ae33-32ddb1423d6a" />
 
 
-<img width="642" height="260" alt="Screenshot 2026-02-06 210848" src="https://github.com/user-attachments/assets/ab2408f4-e863-46c9-a961-cc81e917b97f" />
+
 
 
 ### New Sample Data Prediction
@@ -228,15 +136,9 @@ def train_model(model, train_loader, criterion, optimizer, epochs):
 
 
 
-<img width="783" height="223" alt="Screenshot 2026-02-06 210856" src="https://github.com/user-attachments/assets/d066d934-0ebb-4006-a05a-e7ca4671c408" />
-
-
-
-
-
-<img width="533" height="61" alt="Screenshot 2026-02-06 210902" src="https://github.com/user-attachments/assets/cc159b13-97d0-4a69-baa6-11bf8c489331" />
+<img width="1196" height="442" alt="Screenshot 2026-03-17 183857" src="https://github.com/user-attachments/assets/657bab41-2cf5-4513-9b68-e36ceab72a30" />
 
 
 
 ## RESULT
-Include your result here
+The neural network model was successfully trained on the customer dataset and achieved a good classification performance, producing accurate predictions for customer segmentation (A, B, C, D) with evaluated metrics such as accuracy, confusion matrix, and classification report.
